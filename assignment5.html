@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignment 5</title>
+    <style>
+        #background{
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+        body{
+            overflow-x: hidden;
+        }
+        #cannoncart {
+            position: absolute;
+            bottom: 0; /* Position 150px from the bottom */
+            left: 0;
+            padding-bottom: 150px;
+        }
+        #wheel {
+            position: absolute;
+            z-index: 3;
+            left: 70px;
+            bottom: 65px;
+        }
+        #turret {
+            position: absolute;
+            z-index: 2;
+            bottom: 140px;
+        }
+        #carriage {
+            position: absolute;
+            z-index: 1;
+        }
+        #cannon_speed, #lives_helper, #score_helper {
+            position: absolute;
+            left: 10px;
+            background-color: white;
+        }
+        #cannon_speed {
+            top: 10px;
+        }
+        #lives_helper {
+            top: 50px;
+        }
+        #score_helper {
+            top: 90px;
+        }
+        #Fubo{
+            position: absolute;
+            left: 100px;
+            top : 0px;
+            display : none; 
+            z-index: 5;
+            width : 150px;
+            height : 300px;
+        }
+    </style>
+</head>
+<body>
+    <img id="background" src="Background.jpg" alt="background">
+    
+    <div id="cannon_speed">
+        <label for="speed_of_cannon">Cannon Speed:</label>
+        <input type="range" id="speed_of_cannon" min="1" max="10" value="5">    
+    </div>
+
+    <div id = lives_helper>
+        <label for="lives" id ="over">Lives left:</label>
+        <span id="lives">5</span>
+    </div>
+    
+    <div id = score_helper>
+        <label for="score">Score:</label>
+        <span id="score">0</span>
+    </div>
+
+    <audio id="sound" src="shot.m4a"></audio>
+    <audio id= "explosion" src="explosion.m4a"></audio>
+    
+    <div id="cannoncart">
+        <img src="Wheel.png" alt="wheel" id="wheel">
+        <img src="Turret.png" alt="turret" id="turret">
+        <img src="Carriage.png" alt="carriage" id="carriage">
+    </div> 
+
+    <img src="FuGo.png" alt="FuGo" id = "Fubo">
+
+    <script>
+        let cannonCart = document.getElementById('cannoncart');
+        let wheel = document.getElementById('wheel');
+        let turret = document.getElementById('turret');
+        let position_x = 0;
+        let speedValue = document.getElementById('speed_of_cannon');
+        let angle = 0;
+        let isBallInFlight = false;
+        const audio_cannon_ball = document.getElementById('sound');
+        let wheelAngle = 0 ;
+        const audio_explosion = document.getElementById('explosion');
+        let lives = 5;
+        let scores = 0;
+        let balloon = document.getElementById('Fubo');
+        let hit_shoot = false;
+        let game_Over = false;
+
+        let cannon_ball; // Cannonball element will be created dynamically
+        let explosion_pic; // explosion_pic element will be created dynamically
+        
+
+        // Function to create the cannonball dynamically
+        function createCannonBall() {
+            cannon_ball = document.createElement('img');
+            cannon_ball.src = 'cannonball.png';
+            cannon_ball.alt = 'cannon_ball';
+            cannon_ball.style.position = 'absolute';
+            cannon_ball.style.width = '48px';
+            cannon_ball.style.height = '48px';
+            cannon_ball.style.display = 'none'; // Initially hide the cannonball
+            cannon_ball.style.zIndex = '4';
+            document.body.appendChild(cannon_ball);
+        }      
+        // Function to create the explosion_pic dynamically
+        function create_explosion_gif() {
+            explosion_pic = document.createElement('img');
+            explosion_pic.src = 'explosion.gif';
+            explosion_pic.alt = 'explosion booom';
+            explosion_pic.style.position = 'absolute';
+            explosion_pic.style.display = 'none'; // Initially hide the explosion
+            explosion_pic.style.zIndex = '6';
+            explosion_pic.style.width = '150px';
+            explosion_pic.style.height = '150px';
+            document.body.appendChild(explosion_pic);
+        }
+
+        // Create the cannonball on page load
+        createCannonBall();
+        // Create the explosion_pic o n page load
+        create_explosion_gif();
+
+        function loop_balloon(){
+            if(game_Over) {
+                return;
+            }
+            const balloon_speed = 2;  
+            const start_position = (min, max) => {
+                return Math.floor(Math.random() * (max - min)) + min;
+            }
+
+            let ballon_x = 0;
+            let balloon_y = 0;
+            ballon_x = start_position(200, window.innerWidth - 150);  // min , max need to be changed
+            balloon.style.left = ballon_x + "px";
+            balloon.style.top = balloon_y + "px";
+            balloon.style.display = 'block';
+
+            const balloon_interval = setInterval(() => {
+                // Check if the balloon goes out of bounds
+                if (balloon_y > window.innerHeight - balloon.offsetHeight) { 
+                    clearInterval(balloon_interval);
+                    audio_explosion.currentTime = 0;
+                    audio_explosion.play();
+
+                    explosion_pic.style.top = (balloon_y + 100) + "px";
+                    explosion_pic.style.left = ballon_x + "px";
+                    balloon.style.display = 'none';
+                    explosion_pic.style.display = 'block';
+
+                    lives -= 1;   
+                    document.getElementById("lives").innerHTML = lives;
+                    setTimeout(() => { explosion_pic.style.display = 'none';
+                    audio_explosion.pause();
+                    }, 500);
+                    if(lives !== 0) {
+                        loop_balloon();
+                    }else {
+                        game_Over = true;
+                        document.getElementById("over").innerHTML = 'Game Over';
+                        document.getElementById("over").style.color = "red";
+                        document.getElementById("lives").innerHTML = '';
+                    }
+                } else if(hit_shoot){
+                    clearInterval(balloon_interval);
+                    hit_shoot = false; 
+                    loop_balloon();
+                }else{
+                    //If the ballon_hit is true break the loop
+                    balloon_y += balloon_speed;
+                    balloon.style.top = balloon_y + "px";
+                }
+            }, 10);
+        }
+        loop_balloon()
+
+        document.addEventListener('keydown', Key_handling);
+
+        function Key_handling(e) {
+            if(game_Over) {
+                return;
+            }
+            let speed = parseInt(speedValue.value);
+            switch (e.key) {
+                case 'ArrowLeft':
+                    if (position_x > 0) {
+                        position_x -= speed;
+                        cannonCart.style.left = position_x + 'px';
+                        wheelAngle -=  speed;
+                        wheel.style.transform = 'rotate(' + wheelAngle + 'deg)';
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (position_x < window.innerWidth - 270) {
+                        position_x += speed;
+                        cannonCart.style.left = position_x + 'px';
+                        wheelAngle +=  speed;
+                    wheel.style.transform = 'rotate(' + wheelAngle + 'deg)';
+                    }
+                    break;
+                case 'ArrowUp':
+                    if (angle > -20) {
+                        angle -= 2;
+                        turret.style.transform = 'rotate(' + angle + 'deg)';
+                    }
+                    break;
+                case 'ArrowDown':
+                    if (angle < 35) {
+                        angle += 2;
+                        turret.style.transform = 'rotate(' + angle + 'deg)';
+                    }
+                    break;
+                case ' ':
+                    if (!isBallInFlight) {
+                        shooting_cannon_ball();
+                    }
+                    break;
+            }
+        }
+
+        function shooting_cannon_ball() {
+            const turretLength = 100; // Approximate length of the turret
+            const ball_speed = 15; 
+
+            // Calculate the tip of the turret based on the current angle
+            const angleRad = (angle * Math.PI) / 180;
+            const turretBaseX = position_x + 100; // Center X position of the turret
+            const turretBaseY = window.innerHeight - 150 - 50; // The Y position of the turret's base
+            const turretTipX = turretBaseX + Math.cos(angleRad) * turretLength;
+            const turretTipY = turretBaseY - Math.sin(angleRad) * turretLength;
+
+            // Set initial position of the cannonball
+            let pos_x = turretTipX - 24; // Offset by half the cannonball size for centering
+            let pos_y = turretTipY - 24; // Offset by half the cannonball size for centering
+
+            // Ensure the cannonball is displayed
+            cannon_ball.style.display = 'block';
+            cannon_ball.style.left = pos_x + 'px';
+            cannon_ball.style.top = pos_y + 'px';
+
+            // Velocity components based on the firing angle
+            const vel_x = Math.cos(angleRad) * ball_speed;
+            const vel_y = Math.sin(angleRad) * ball_speed;
+
+            isBallInFlight = true;
+            audio_cannon_ball.currentTime = 0;
+            audio_cannon_ball.play();
+
+            const interval = setInterval(() => {
+                let balloonRect = balloon.getBoundingClientRect();
+                let cannonBallRect = cannon_ball.getBoundingClientRect();
+                // Check if the cannonball goes out of bounds
+                if (pos_x > window.innerWidth || pos_y > window.innerHeight || pos_y < 0) {
+                    clearInterval(interval);
+                    cannon_ball.style.display = 'none';
+                    isBallInFlight = false;
+                    audio_cannon_ball.pause();
+                    audio_cannon_ball.currentTime = 0;
+                } else if (cannonBallRect.right > balloonRect.left &&
+                            cannonBallRect.left < balloonRect.right &&
+                            cannonBallRect.bottom > balloonRect.top &&
+                            cannonBallRect.top < balloonRect.bottom) {
+                        clearInterval(interval);
+                        cannon_ball.style.display = 'none';
+                        isBallInFlight = false;
+                        audio_cannon_ball.pause();
+                        audio_cannon_ball.currentTime = 0;
+
+                        audio_explosion.currentTime = 0;
+                        audio_explosion.play();
+
+                        explosion_pic.style.top = (balloonRect.top+100)+ "px";
+                        explosion_pic.style.left = `${balloonRect.left}px`;
+                        balloon.style.display = 'none'; 
+                        explosion_pic.style.display = 'block';
+
+                        scores += 1;    // Update the score
+                        document.getElementById("score").innerHTML = scores;
+                        hit_shoot = true;
+                        setTimeout(() => { explosion_pic.style.display = 'none';
+                        audio_explosion.pause();
+                        }, 500);
+                    } else{
+                    pos_x += vel_x;
+                    pos_y += vel_y; // Move based on velocity
+                    cannon_ball.style.left = pos_x + 'px';
+                    cannon_ball.style.top = pos_y + 'px';
+                }
+            }, 16);
+        }
+
+        window.addEventListener('scroll', () => {
+            const scrollPos = window.scrollY;
+            cannonCart.style.stop = scrollPos + 'px';
+        })
+        window.addEventListener('resize', () => {
+            if (position_x > (window.innerWidth - 270)) { 
+                position_x = window.innerWidth - 270;    
+                cannonCart.style.left = position_x + "px";
+            }       
+        });
+    </script>
+</body>
+</html>
